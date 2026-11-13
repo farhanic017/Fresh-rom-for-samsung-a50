@@ -1,0 +1,7 @@
+# package.prop files are byte-exact copies of the zip entry - never touch line endings
+patch/package.prop.original -text
+patch/package.prop.patched -text
+
+# shell/C# sources keep LF regardless of platform checkout
+*.cs text eol=lf
+*.ps1 text eol=crlf

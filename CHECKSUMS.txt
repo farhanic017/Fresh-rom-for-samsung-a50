@@ -1,0 +1,24 @@
+# SHA256 checksums
+#
+# Verify with:
+#   Get-FileHash <file> -Algorithm SHA256
+# or:
+#   certutil -hashfile <file> SHA256
+
+# Official Fresh ROM (source for the patch) - download from https://freshroms.github.io/
+5651C3E0E5D79CE7BAE28A40BB30B563BB312FE34503E7808628C79C64528A1B  FRSH-UP1A_a50_6.5.3.03R_25080301_OFFICIAL-signed.zip
+#   size: 4436931507 bytes
+
+# Patched SM-A505YN build (this repo's release / output of patch/Apply-A505YNPatch.ps1)
+17DFA6F050D7AFC0B596BEA224E5EEAA16C4572378AEEC724A41796C06A36D3C  FRSH-UP1A_a50_6.5.3.03R_25080301_OFFICIAL-A505YN-signed.zip
+#   size: 4436931512 bytes  (+5 vs official)
+
+# Release split parts (concatenate part1+part2+part3 -> the patched zip above;
+# verified: concatenation reproduces SHA256 17DFA6F0…A36D3C exactly)
+6347AD58C9433F1C12171210EA0E3735C1A86641C5DDC247CAE6F5D4ABB34CB9  FRSH-A505YN.part1
+DDE987409F5A61FAFD4453E11AC6CC7C283F735CF7B2A113ECBC2C4302C43661  FRSH-A505YN.part2
+8C1E63501F5064198F0033D9EF9CDA4A4D03E108C7764E9B2139223BC2A82F8D  FRSH-A505YN.part3
+
+# Individual entry (inside the zip):
+#   package.prop (patched): 545 bytes, CRC32 0x69429506
+#   package.prop (original): 535 bytes, CRC32 0xAF8E2228
