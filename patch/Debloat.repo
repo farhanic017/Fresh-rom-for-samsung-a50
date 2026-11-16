@@ -1,0 +1,10 @@
+# Debloat additions (replaces Radio/Chrome/Samsung Messages with Google Messages)
+# Google's original 5.2.062 Messages APK (single APK, no re-signing) is injected
+# separately via package_extract_file post-install.
+product/app/Chrome
+product/app/Chrome64
+system/priv-app/SamsungMessages
+system/app/Radio
+system/priv-app/Radio
+system/app/FMRadio
+system/priv-app/FMRadio

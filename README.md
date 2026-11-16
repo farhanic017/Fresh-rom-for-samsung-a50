@@ -28,17 +28,21 @@ cmd /c "copy /b FRSH-A505YN.part1 + FRSH-A505YN.part2 + FRSH-A505YN.part3 FRSH-U
 Get-FileHash .\FRSH-UP1A_a50_6.5.3.03R_25080301_OFFICIAL-A505YN-signed.zip -Algorithm SHA256
 ```
 
-Expected: `17DFA6F050D7AFC0B596BEA224E5EEAA16C4572378AEEC724A41796C06A36D3C`
+Expected: `079751f7f03a16425140ac2fecd749d31cdaef80d8f3cab0a6bd256d0c3e9430`
 
 ### Option B — rebuild it yourself from the official zip (fully reproducible)
 
 ```powershell
 # 1. download the OFFICIAL zip from https://freshroms.github.io/ (or use your copy)
-# 2. run the patcher (Windows PowerShell 5.1+, no extra dependencies):
+# 2. run the whitelist patcher (Windows PowerShell 5.1+, no extra dependencies):
 powershell -ExecutionPolicy Bypass -File .\patch\Apply-A505YNPatch.ps1
+# 3. rebuild the ROM with system-app removals + Google Messages injector:
+powershell -ExecutionPolicy Bypass -File .\patch\Rebuild-A505YNPatched.ps1
+# 4. split the rebuilt ROM into release parts:
+powershell -ExecutionPolicy Bypass -File .\patch\Split-A505YNParts.ps1
 ```
 
-The script finds the official zip, patches **one entry** (`package.prop`), and then verifies everything: ZIP64 integrity, all 151 entries in order, per-entry SHA256 equality of the untouched 150, CRC32 consistency of the patched entry, and a simulation of the installer's own model check. It finishes with `VERIFICATION PASSED`.
+The patcher finds the official zip, patches **one entry** (`package.prop`), and verifies everything. The rebuild step then strips Radio/Chrome/Samsung Messages and injects Google's own Messages APK. It finishes with `Done`.
 
 ---
 
@@ -67,21 +71,24 @@ The patch appends the model to that one line:
 +pkg.models=SM-A505FM SM-A505FN SM-A505F SM-A505GT SM-A505GN SM-A505G SM-A505YN
 ```
 
-That is the **entire change**: `package.prop` grows 535 → 545 bytes, the zip grows by exactly **5 bytes**, and **every other byte of the 4.4 GB archive is copied verbatim** (verified entry-by-entry by SHA256). The zip's central directory, ZIP64 end-record and ZIP64 locator are rewritten accordingly.
+That is still **one part of the change**: `package.prop` grows 535 → 545 bytes.
+
+Since the original release was built, the ROM has also been **debloated**: Radio (FM radio), Chrome, and Samsung Messages are removed via an install-time overlay whiteout (`META-INF/io/github/freshroms/repository/fresh/Debloat.repo`). In their place, Google's original Messages APK (`Pegasus_RC17_xxhdpi.arm64-v8a`, 5.2.062, SHA256 `02231de94dbdffb95d4d77cf5b37d85e3b8d5769c9f51b4a46c3e5ef1ab2f114`) is extracted into `/omr/my_bigball/product/app/GoogleMessages/` post-install so the overlay lowerdir exposes it even on the small A50 `/omr` partition.
 
 | | |
 |---|---|
 | Official zip SHA256 | `5651C3E0E5D79CE7BAE28A40BB30B563BB312FE34503E7808628C79C64528A1B` |
-| Patched zip SHA256 | `17DFA6F050D7AFC0B596BEA224E5EEAA16C4572378AEEC724A41796C06A36D3C` |
-| Size | 4,436,931,507 → 4,436,931,512 bytes (+5) |
-| Entries | 151 → 151, same names, same order |
+| Patched zip SHA256 | `079751f7f03a16425140ac2fecd749d31cdaef80d8f3cab0a6bd256d0c3e9430` |
+| Size | 4,436,931,507 → 4,460,344,709 bytes (+23,413,202) |
+| Entries | 151 → 153, same order, updater-script replaced |
 | `package.prop` CRC32 | `0x69429506` (content = central directory = local header) |
+| GoogleMessages.apk | 5.2.062 (xxhdpi, arm64), 31,989,783 bytes, SHA256 `02231de94dbdffb95d4d77cf5b37d85e3b8d5769c9f51b4a46c3e5ef1ab2f114` |
 
 Full technical write-up, including the NFC investigation: **[docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md)**.
 
 ## NFC
 
-NFC works exactly as on the supported SM-A505FN / SM-A505GN — there is **one shared system/vendor/product image for all 7 whitelisted models**, and it contains the complete NFC stack (`NfcNci.apk`, `android.hardware.nfc@1.2-service`, `libnfc-sec-vendor.conf`, …). The A505YN is hardware-based on the A505GN. The patch touches only the whitelist, so NFC support is untouched. Details in [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md#nfc).
+NFC works exactly as on the supported SM-A505FN / SM-A505GN — there is **one shared system/vendor/product image for all 7 whitelisted models**, and it contains the complete NFC stack (`NfcNci.apk`, `android.hardware.nfc@1.2-service`, `libnfc-sec-vendor.conf`, …). The A505YN is hardware-based on the A505GN. The debloat pass only removes Radio / Chrome / Samsung Messages and does not touch the NFC stack, so NFC support is untouched. Details in [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md#nfc).
 
 ## Flashing
 
@@ -94,9 +101,12 @@ Step-by-step instructions for the SM-A505YN (Odin + TWRP + vbmeta, exactly like 
 ```
 patch/
   Apply-A505YNPatch.ps1   # one-command: patch official zip + full verification
+  Rebuild-A505YNPatched.ps1  # debloat: whiteout Radio/Chrome/Samsung Messages + inject Google Messages
+  Split-A505YNParts.ps1   # split the rebuilt ROM into 3 release parts
   ZipPatcher.cs           # surgical ZIP64-aware single-entry zip patcher (compiled by the script)
   package.prop.original   # the entry as shipped (535 bytes)
   package.prop.patched    # the entry after patch (545 bytes)
+  Debloat.repo            # overlay whiteout paths for the debloat pass
 docs/
   HOW-IT-WORKS.md         # reverse-engineering notes, verification results, NFC findings
   INSTALL.md              # flash guide for SM-A505YN
