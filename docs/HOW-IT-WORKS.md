@@ -212,3 +212,43 @@ already-supported NFC models receive.
   the source SHA256 doesn't match, though the patch logic is generic.
 * No signature/OTA verification exists in this zip, so no re-signing is needed
   (and none is performed).
+
+## 7. Assistant choice (Gemini or Samsung Bixby)
+
+The install wizard gained an assistant selectbox ahead of the Bixby prompts.
+Design, in the same style as the rest of the installer:
+
+* **Wizard layer** — `modules/addon_assistant.edify` is a `selectbox` writing
+  `assistant.prop` (`selected.0`: `1` = Samsung Bixby, `2` = Google Gemini;
+  selectbox values are 1-based, same as the Google Apps box). It is included by
+  `modules/install_custom.edify`, which then uses the wizard config's own
+  `if prop("assistant.prop","selected.0") == "1" then include(addon_bixby) endif;`
+  so the Bixby Voice/Vision pages are *never rendered* when Gemini is chosen.
+  `install_express.edify` writes `assistant.prop=1`, keeping express installs on
+  Bixby. Strings for the page exist in all 8 `strings/*.lang` files.
+* **Flash layer** — `updater-script` gates everything on
+  `file_getprop("/tmp/install-wizard/assistant.prop","selected.0")`:
+  * `== "2"` → prints the Gemini title and extracts 6 split APKs
+    (`gemini/base.apk` + arm64/xxhdpi/xhdpi/hdpi/en configs) into
+    `/omr/my_bigball/product/app/Gemini/`, each with `mkdir -Z` +
+    `setfattr security.selinux u:object_r:system_file:s0` + `chmod 0644`
+    (identical to the GoogleMessages pattern).
+  * the Bixby Voice/Vision blocks become `if assistant==1 then (existing
+    bixby.prop logic) else (fresh-tk addon_remove …) endif` — so choosing
+    Gemini whiteouts both Bixby add-ons, and Bixby installs keep their previous
+    defaults. `fresh-tk migrate_addon_list`/`export_addon_list` were extended to
+    carry `assistant.prop` across upgrade/reinstall flashes (default `1`).
+* **Summary** — `make-summary` prints the chosen assistant and hides the Bixby
+  rows when Gemini is selected (avoids reading a non-existent `bixby.prop`).
+* **First-boot repair** — `fresh-assist.rc` + `fresh-assist.sh` are extracted
+  into the `/omr` overlay (`/system/etc/init/`, `/system/bin/`). On
+  `sys.boot_completed` the script repairs `settings secure
+  voice_interaction_service` when it is unset or points at the removed Bixby
+  Voice package, rebinding the assistant host to the Google app.
+* **Why not Gemini directly** — the Gemini APK (`com.google.android.apps.bard`
+  1.0.995038376) declares neither a `VoiceInteractionService` nor an
+  `ACTION_ASSIST` handler in its manifest (verified against the binary
+  AndroidManifest string pool), so Android 11 cannot bind it as the system
+  voice-interaction service; Google's official flow routes Gemini through the
+  Google app (`Google → Settings → Google Assistant → Digital assistants →
+  Gemini`), which is what the repair hook prepares.
