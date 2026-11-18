@@ -28,7 +28,7 @@ cmd /c "copy /b FRSH-A505YN.part1 + FRSH-A505YN.part2 + FRSH-A505YN.part3 FRSH-U
 Get-FileHash .\FRSH-UP1A_a50_6.5.3.03R_25080301_OFFICIAL-A505YN-signed.zip -Algorithm SHA256
 ```
 
-Expected: `8039c9d0b3cf2796e9709402f1c12b10957a975e2c68d6ea11fae742517e7a93`
+Expected: `8ff66ff97f14e7ff55c53374cc220f17867f5d8c2fa12f4953dc45f65403903a`
 
 ### Option B — rebuild it yourself from the official zip (fully reproducible)
 
@@ -90,8 +90,8 @@ On first boot a small repair hook (`fresh-assist.rc` + `fresh-assist.sh`, shippe
 | | |
 |---|---|
 | Official zip SHA256 | `5651C3E0E5D79CE7BAE28A40BB30B563BB312FE34503E7808628C79C64528A1B` |
-| Patched zip SHA256 | `8039c9d0b3cf2796e9709402f1c12b10957a975e2c68d6ea11fae742517e7a93` |
-| Size | 4,436,931,507 → 4,463,010,029 bytes (+26,078,522) |
+| Patched zip SHA256 | `8ff66ff97f14e7ff55c53374cc220f17867f5d8c2fa12f4953dc45f65403903a` |
+| Size | 4,436,931,507 → 4,463,009,995 bytes (+26,078,488) |
 | Entries | 151 → 163, same order, updater-script replaced |
 | `package.prop` CRC32 | `0x69429506` (content = central directory = local header) |
 | GoogleMessages.apk | 5.2.062 (xxhdpi, arm64), 31,989,783 bytes, SHA256 `02231de94dbdffb95d4d77cf5b37d85e3b8d5769c9f51b4a46c3e5ef1ab2f114` |

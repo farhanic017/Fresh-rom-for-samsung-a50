@@ -53,14 +53,19 @@ foreach ($e in $zip.Entries) { $srcNames[$e.FullName] = $true }
 foreach ($k in $replacements.Keys) {
   if (-not $srcNames.ContainsKey($k)) { $zip.Dispose(); throw "REPLACEMENT NOT IN SRC ZIP: $k" }
 }
+# additions: refresh in place when the entry already exists (idempotent rebuilds),
+# append otherwise
+$toAppend = @()
 foreach ($k in $additions.Keys) {
-  if ($srcNames.ContainsKey($k)) { $zip.Dispose(); throw "ADDITION ALREADY IN SRC ZIP: $k" }
+  if ($srcNames.ContainsKey($k)) { $toAppend += $null } else { $toAppend += $k }
 }
+$toAppend = @($toAppend | Where-Object { $_ })
 
 if (Test-Path $dst) { Remove-Item $dst -Force }
 $dest = [System.IO.Compression.ZipFile]::Open($dst, [System.IO.Compression.ZipArchiveMode]::Create)
 
 $replacedCount = 0
+$refreshedCount = 0
 foreach ($entry in $zip.Entries) {
   $newEntry = $dest.CreateEntry($entry.FullName, [System.IO.Compression.CompressionLevel]::Optimal)
   $d = $newEntry.Open()
@@ -68,6 +73,10 @@ foreach ($entry in $zip.Entries) {
     $bytes = [IO.File]::ReadAllBytes($replacements[$entry.FullName])
     $d.Write($bytes, 0, $bytes.Length)
     $replacedCount++
+  } elseif ($additions.Contains($entry.FullName)) {
+    $bytes = [IO.File]::ReadAllBytes($additions[$entry.FullName])
+    $d.Write($bytes, 0, $bytes.Length)
+    $refreshedCount++
   } else {
     $s = $entry.Open()
     $buffer = New-Object byte[] (4MB)
@@ -82,7 +91,7 @@ foreach ($entry in $zip.Entries) {
 }
 
 $addedCount = 0
-foreach ($k in $additions.Keys) {
+foreach ($k in $toAppend) {
   $newEntry = $dest.CreateEntry($k, [System.IO.Compression.CompressionLevel]::Optimal)
   $d = $newEntry.Open()
   $bytes = [IO.File]::ReadAllBytes($additions[$k])
@@ -96,5 +105,6 @@ $dest.Dispose()
 
 $fi = Get-Item $dst
 Write-Output "Replaced: $replacedCount / $($replacements.Count)"
-Write-Output "Added:    $addedCount / $($additions.Count)"
+Write-Output "Refreshed additions: $refreshedCount"
+Write-Output "Added:    $addedCount (new entries)"
 Write-Output "Output:   $($fi.FullName) ($($fi.Length) bytes)"
